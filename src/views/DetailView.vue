@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { scenes, videos } from '@/data/mockData'
+import { videos } from '@/data/mockData'
 import type { Product } from '@/data/mockData'
 import { getProducts } from '@/utils/cloudDB'
 import { sceneTagMap } from '@/data/sceneTags'
@@ -14,7 +14,6 @@ const allProducts = ref<Product[]>([])
 
 const video = computed(() => videos.find((v) => v.id === props.id))
 const sceneId = computed(() => video.value?.sceneId ?? '')
-const scene = computed(() => scenes.find((s) => s.id === sceneId.value))
 
 const sceneTitles: Record<string, string> = {
   s1: '护齿好物',

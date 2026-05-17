@@ -10,7 +10,6 @@ const router = useRouter()
 
 // 从路由 query 立即拿到播放地址，不等 DB
 const instantUrl = (route.query.url as string) || ''
-const instantCover = (route.query.cover as string) || ''
 const instantTitle = (route.query.title as string) || '视频'
 
 const video = ref<Video | null>(null)
