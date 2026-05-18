@@ -77,7 +77,7 @@ onMounted(async () => {
     <div class="relative aspect-video bg-black">
       <iframe
         v-if="instantUrl"
-        :src="instantUrl + '&autoplay=1&muted=1'"
+        :src="instantUrl.replace('autoplay=0', 'autoplay=1&muted=1')"
         class="absolute inset-0 w-full h-full"
         frameborder="0"
         allowfullscreen

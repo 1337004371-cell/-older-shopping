@@ -69,7 +69,7 @@ function closePlayer() {
       <!-- Bilibili iframe 播放器 -->
       <iframe
         v-if="isPlayerOpen"
-        :src="video.videoUrl"
+        :src="video.videoUrl.replace('autoplay=0', 'autoplay=1&muted=1')"
         class="absolute inset-0 w-full h-full"
         frameborder="0"
         allowfullscreen
