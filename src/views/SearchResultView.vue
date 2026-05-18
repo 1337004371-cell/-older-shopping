@@ -2,7 +2,7 @@
 import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product, Video } from '@/data/mockData'
-import { matchScene } from '@/data/searchCases'
+import { matchScene, FALLBACK_SCENE_IDS } from '@/data/searchCases'
 import { sceneTagMap } from '@/data/sceneTags'
 import { getProducts, getVideos } from '@/utils/cloudDB'
 import SearchSkeleton from '@/components/SearchSkeleton.vue'
@@ -64,11 +64,21 @@ const topVideo = computed(() => {
 const matchedProducts = computed(() => {
   const sId = matched.value?.sceneId
   const result = sId ? allProducts.value.filter((p) => p.sceneId === sId) : []
-  console.log('搜索中...', query.value, '| 匹配 sceneId:', sId, '| 云端商品总数:', allProducts.value.length, '| 命中:', result.length)
-  if (allProducts.value.length > 0) {
-    console.log('数据库返回 sceneId 列表:', allProducts.value.map(p => p.sceneId + ':' + p.name))
-  }
   return result
+})
+
+// 兜底推荐：无匹配或匹配结果为空时，从热门场景取爆款商品
+const isFallback = computed(() => !matched.value || matchedProducts.value.length === 0)
+
+const fallbackProducts = computed(() => {
+  if (!isFallback.value) return []
+  const products: Product[] = []
+  for (const sId of FALLBACK_SCENE_IDS) {
+    const sceneProducts = allProducts.value.filter(p => p.sceneId === sId)
+    products.push(...sceneProducts.slice(0, 4))
+    if (products.length >= 8) break
+  }
+  return products.slice(0, 8)
 })
 
 const filteredProducts = computed(() => {
@@ -181,8 +191,8 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- ====== 搜索结果 ====== -->
-    <template v-if="matched">
+    <!-- ====== 搜索结果（有匹配且商品非空） ====== -->
+    <template v-if="matched && matchedProducts.length > 0">
       <!-- 专家视频 -->
       <div v-if="topVideo" class="px-3 py-3">
         <h2 class="text-[18px] font-extrabold text-gray-800 mb-3">专家讲解</h2>
@@ -245,15 +255,40 @@ onMounted(async () => {
       </Transition>
     </template>
 
-    <!-- 未匹配 -->
-    <div v-else class="flex flex-col items-center justify-center py-20 px-6">
-      <div class="w-16 h-16 rounded-full bg-[#FFF8E1] flex items-center justify-center mb-4">
-        <svg class="w-8 h-8 text-[#F9A825]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+    <!-- 未匹配 / 结果为空 → 兜底推荐 -->
+    <div v-if="isFallback" class="px-4 pt-4">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-[22px]">🔥</span>
+        <h2 class="text-[18px] font-extrabold text-gray-800">为您推荐热门好物</h2>
       </div>
-      <p class="text-[18px] font-bold text-gray-500 text-center">暂未找到"{{ query }}"相关内容</p>
-      <p class="text-[15px] text-gray-400 mt-2 text-center">试试搜索：腿脚、牙齿、保暖、养生</p>
+      <p class="text-[15px] text-gray-500 mb-4">暂时没有找到"{{ query }}"的相关内容，您可以试试：腿脚、牙齿、保暖、洗澡、养生</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div
+          v-for="product in fallbackProducts"
+          :key="product.id"
+          class="bg-white rounded-xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+          @click="router.push({ name: 'product', params: { id: product.id } })"
+        >
+          <div class="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+            <img
+              :src="product.mainImage"
+              :alt="product.name"
+              loading="lazy"
+              class="w-full h-full object-cover"
+            />
+          </div>
+          <div class="px-3 py-2.5">
+            <p class="text-[15px] text-gray-800 font-extrabold leading-snug line-clamp-2 min-h-[42px]">{{ product.name }}</p>
+            <div class="flex items-center gap-1.5 mt-2">
+              <span class="bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded">{{ product.tag }}</span>
+              <span class="text-[11px] text-gray-400 line-through">¥{{ (product.price * 1.8).toFixed(0) }}</span>
+            </div>
+            <div class="mt-1.5">
+              <span class="text-[22px] font-black text-red-500">¥{{ product.price }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
