@@ -70,7 +70,7 @@ onMounted(() => {
 
     <!-- 视频卡片列表 -->
     <div v-else class="flex flex-col gap-4">
-      <VideoCard v-for="video in visibleVideos" :key="video.id" :video="video" :linkTo="'/video/' + video.id" />
+      <VideoCard v-for="video in visibleVideos" :key="video.id" :video="video" />
     </div>
 
     <!-- 加载更多触发器 -->

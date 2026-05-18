@@ -1,43 +1,37 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
 import { useIntersectionObserver } from '@/composables/useIntersectionObserver'
 import type { Video } from '@/data/mockData'
 
 const props = defineProps<{ video: Video; linkTo?: string }>()
-const router = useRouter()
 
 const cardRef = ref<HTMLElement | null>(null)
 const { isVisible } = useIntersectionObserver(cardRef, 0.4)
-const isMuted = ref(true)
 const isPlaying = ref(false)
 const isPlayerOpen = ref(false)
+
+// 当卡片可见时预加载 iframe（静音自动播放），用户点击直接看到已播放的画面
+const shouldPreload = computed(() => isVisible.value && !isPlayerOpen.value)
+const iframeSrc = computed(() => {
+  const url = props.video.videoUrl
+  if (!url || url === '#') return ''
+  return url.replace('autoplay=0', 'autoplay=1&muted=1')
+})
 
 watch(isVisible, (visible) => {
   if (visible && !isPlayerOpen.value) {
     isPlaying.value = true
-    console.log(`[播放] ${props.video.title}`)
   } else {
     isPlaying.value = false
-    console.log(`[暂停] ${props.video.title}`)
   }
 })
 
-function toggleMute() {
-  isMuted.value = !isMuted.value
-}
-
 function openPlayer() {
   if (props.linkTo) {
-    const q = new URLSearchParams({
-      url: props.video.videoUrl,
-      cover: props.video.coverUrl || props.video.coverImage || '',
-      title: props.video.title,
-    })
-    router.push(props.linkTo + '?' + q.toString())
+    // linkTo 模式已弃用，但保留兼容
     return
   }
-  if (props.video.videoUrl && props.video.videoUrl !== '#') {
+  if (iframeSrc.value) {
     isPlayerOpen.value = true
     isPlaying.value = true
   }
@@ -66,19 +60,19 @@ function closePlayer() {
 
     <!-- 视频区域 -->
     <div class="relative aspect-video bg-gradient-to-br from-gray-200 to-gray-300 mx-4 rounded-xl overflow-hidden">
-      <!-- Bilibili iframe 播放器 -->
+      <!-- 预加载 iframe：卡片可见时就开始静音加载 Bilibili 播放器 -->
       <iframe
-        v-if="isPlayerOpen"
-        :src="video.videoUrl.replace('autoplay=0', 'autoplay=1&muted=1')"
+        v-if="shouldPreload || isPlayerOpen"
+        :src="iframeSrc"
         class="absolute inset-0 w-full h-full"
+        :style="isPlayerOpen ? {} : { opacity: 0, pointerEvents: 'none' }"
         frameborder="0"
         allowfullscreen
         allow="autoplay; encrypted-media"
-        sandbox="allow-scripts allow-same-origin allow-popups"
       />
 
-      <!-- 封面区域（未播放时显示） -->
-      <template v-else>
+      <!-- 封面区域（覆盖在预加载 iframe 上面） -->
+      <template v-if="!isPlayerOpen">
         <!-- 封面图 -->
         <img
           v-if="video.coverUrl || video.coverImage"
@@ -107,20 +101,6 @@ function closePlayer() {
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
-        </button>
-
-        <!-- 静音/取消静音按钮 -->
-        <button
-          class="absolute bottom-2.5 right-2.5 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center active:scale-90 transition-transform"
-          @click.stop="toggleMute"
-        >
-          <svg v-if="isMuted" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-          </svg>
-          <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-          </svg>
         </button>
       </template>
 
